@@ -67,6 +67,7 @@ def get(search):
             if len(right) > widest:
                 widest = len(right)
             outlines.append((right, left))
+    widest = max(len(x[0]) for x in outlines)
 
     print "\n".join(
             x + (" " * (widest - len(x))) + " -- " + y for x, y in outlines)
