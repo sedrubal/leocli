@@ -1,0 +1,15 @@
+--------------------------------------------------------------------------------
+               leo - a german<->english language translation script
+--------------------------------------------------------------------------------
+
+leo is a python script that queries dict.leo.org for one or more given keywords
+and prints their meanings and translations to stdout
+
+Installation
+============
+
+If you want to install leo system-wide, you should use setup.py:
+
+ python setup.py install
+
+This will install 
