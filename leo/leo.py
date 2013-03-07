@@ -33,40 +33,68 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 __author__     = "Christian Schick"
 __copyright__  = "Copyright 2013, Christian Schick"
 __license__    = "MIT"
-__version__    = "1.1"
+__version__    = "1.2"
 __maintainer__ = "Christian Schick"
 __email__      = "github@simperium.de"
 
 ################################################################################
 
-from BeautifulSoup import BeautifulSoup
+from BeautifulSoup import BeautifulSoup, Tag
 from urllib2 import urlopen
 import sys
 from cgi import escape
 from HTMLParser import HTMLParser
 
+def getlang(td):
+    """Returns the language attribute of a td tag."""
+    lang = None
+    for attr, value in td.attrs:
+        if attr == "lang":
+            lang = value
+            break
+    return lang
+
+def istag(obj):
+    """Tests if an object is an instance of BeautifulSoup.Tag."""
+    return isinstance(obj, Tag)
+
+def nospans(tag):
+    """Checks that the given tag contains no <span> subtags."""
+    spans = False
+    for subtag in tag.contents:
+        if istag(subtag):
+            spans = subtag.name == "span"
+        if spans:
+            break
+    return not spans
+
 def get(search):
-    mask = "http://dict.leo.org/ende?lang=de&search=%s"
+    mask = "http://dict.leo.org/ende?search=%s&lang=de"
     url = urlopen(mask % search.replace(" ", "+"))
     content = BeautifulSoup(url)
     p = HTMLParser()
-    # all <td> tags with valign="middle" are potential results
-    result = content.findAll("td", attrs={"valign": "middle"})
-    # actual results all start with &nbsp; so we filter for those
+    # all <td> tags with class="text" are results
+    result = content.findAll("td", attrs={"class": "text"})
     outlines = []
     left = None
     right = None
     widest = 0
     # buffer hits in list for later string formatting
-    for i, c in enumerate(filter(lambda x: x.contents[0] == u'&nbsp;', result)):
-        texts = filter(lambda x: hasattr(x, "text"), c.contents[1:])
-        if i % 2 == 0:
-            left = " ".join(p.unescape(x.text) for x in texts)
-        else:
-            right = " ".join(p.unescape(x.text) for x in texts)
-            if len(right) > widest:
-                widest = len(right)
-            outlines.append((right, left))
+    for i in range(0, len(result), 2):
+        # hits are already organized in a left/right manner
+        # drop lines containing <span> tags - they are for orthographic similar
+        # words - we don't want them
+        # also don't process line on out of bouns error
+        if nospans(result[i]) and nospans(result[i + 1]) and i < len(result)-1:
+            c = result[i].contents
+            left = "".join(p.unescape(x.text if istag(x) else x) for x in c)
+            c = result[i + 1].contents
+            right = "".join(p.unescape(x.text if istag(x) else x ) for x in c)
+            left = left.strip()
+            right = right.strip()
+            if len(left) > widest:
+                widest = len(left)
+            outlines.append((left, right))
     widest = max(len(x[0]) for x in outlines)
 
     print "\n".join(
