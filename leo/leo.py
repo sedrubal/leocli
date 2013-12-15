@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 __author__     = "Christian Schick"
 __copyright__  = "Copyright 2013, Christian Schick"
 __license__    = "MIT"
-__version__    = "1.2"
+__version__    = "1.3"
 __maintainer__ = "Christian Schick"
 __email__      = "github@simperium.de"
 
@@ -80,12 +80,12 @@ def get(search):
     right = None
     widest = 0
     # buffer hits in list for later string formatting
-    for i in range(0, len(result), 2):
+    for i in range(0, len(result) - 1, 2):
         # hits are already organized in a left/right manner
         # drop lines containing <span> tags - they are for orthographic similar
         # words - we don't want them
         # also don't process line on out of bouns error
-        if nospans(result[i]) and nospans(result[i + 1]) and i < len(result)-1:
+        if nospans(result[i]) and nospans(result[i + 1]):
             c = result[i].contents
             left = "".join(p.unescape(x.text if istag(x) else x) for x in c)
             c = result[i + 1].contents
@@ -95,10 +95,12 @@ def get(search):
             if len(left) > widest:
                 widest = len(left)
             outlines.append((left, right))
-    widest = max(len(x[0]) for x in outlines)
-
-    print "\n".join(
-            x + (" " * (widest - len(x))) + " -- " + y for x, y in outlines)
+    if len(outlines) > 0:
+        widest = max(len(x[0]) for x in outlines)
+        print "\n".join(
+                x + (" " * (widest - len(x))) + " -- " + y for x, y in outlines)
+    else:
+        print "No matches found for '%s'" % search
 
 ################################################################################
 
