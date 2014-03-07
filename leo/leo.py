@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 __author__     = "Christian Schick"
 __copyright__  = "Copyright 2013, Christian Schick"
 __license__    = "MIT"
-__version__    = "1.3"
+__version__    = "1.4"
 __maintainer__ = "Christian Schick"
 __email__      = "github@simperium.de"
 
@@ -44,6 +44,21 @@ from urllib2 import urlopen
 import sys
 from cgi import escape
 from HTMLParser import HTMLParser
+from PySide.QtWebKit import QWebPage
+from PySide.QtGui import QApplication
+from PySide.QtCore import QUrl
+
+class WebPage(QWebPage):
+    def __init__(self, url):
+        self.__app = QApplication(sys.argv)
+        QWebPage.__init__(self)
+        self.loadFinished.connect(self._loadFinished)
+        self.mainFrame().load(QUrl(url))
+        self.__app.exec_()
+
+    def _loadFinished(self, result):
+        self.frame = self.mainFrame()
+        self.__app.quit()
 
 def getlang(td):
     """Returns the language attribute of a td tag."""
@@ -69,26 +84,27 @@ def nospans(tag):
     return not spans
 
 def get(search):
-    mask = "http://dict.leo.org/ende?search=%s&lang=de"
-    url = urlopen(mask % search.replace(" ", "+"))
-    content = BeautifulSoup(url)
+    mask = "http://dict.leo.org/dictQuery/m-vocab/ende/de.html?searchLoc=0&lp"\
+           "=ende&lang=de&directN=0&search=%s&resultOrder=basic&"\
+           "multiwordShowSingle=on"
+    url = mask % search.replace(" ", "+")
+    p = WebPage(url)
+    html = p.frame.toHtml().encode('ascii', 'ignore')
+    content = BeautifulSoup(html)
     p = HTMLParser()
-    # all <td> tags with class="text" are results
-    result = content.findAll("td", attrs={"class": "text"})
+    result_en = content.findAll(
+            "td", attrs={"data-dz-attr": "relink", "lang": "en"})
+    result_de = content.findAll(
+            "td", attrs={"data-dz-attr": "relink", "lang": "de"})
     outlines = []
     left = None
     right = None
     widest = 0
-    # buffer hits in list for later string formatting
-    for i in range(0, len(result) - 1, 2):
-        # hits are already organized in a left/right manner
-        # drop lines containing <span> tags - they are for orthographic similar
-        # words - we don't want them
-        # also don't process line on out of bouns error
-        if nospans(result[i]) and nospans(result[i + 1]):
-            c = result[i].contents
+    for i in range(0, len(result_en)):
+        if nospans(result_en[i]):
+            c = result_en[i].contents
             left = "".join(p.unescape(x.text if istag(x) else x) for x in c)
-            c = result[i + 1].contents
+            c = result_de[i].contents
             right = "".join(p.unescape(x.text if istag(x) else x ) for x in c)
             left = left.strip()
             right = right.strip()

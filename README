@@ -23,6 +23,12 @@ If you do not wish to install leo system-wide you can simply call it by invoking
  leo/leo.py
 
 from the directory you downloaded leo to.
+Leo requires Qt4 to be installed, because it uses Qt's webkit renderer to act
+as a headless browser to be able to properly parse the javascript created site
+content.
+Leo uses PySide as Qt4 wrapper. You can either install it by using your
+distribution's package management system, or by installing it via pip or
+easy_install.
 
 Usage
 =====
