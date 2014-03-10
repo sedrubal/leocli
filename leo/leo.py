@@ -33,32 +33,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 __author__     = "Christian Schick"
 __copyright__  = "Copyright 2013, Christian Schick"
 __license__    = "MIT"
-__version__    = "1.4"
+__version__    = "1.4.1"
 __maintainer__ = "Christian Schick"
 __email__      = "github@simperium.de"
 
 ################################################################################
 
 from BeautifulSoup import BeautifulSoup, Tag
-from urllib2 import urlopen
+from urllib2 import urlopen, Request
 import sys
 from cgi import escape
 from HTMLParser import HTMLParser
-from PySide.QtWebKit import QWebPage
-from PySide.QtGui import QApplication
-from PySide.QtCore import QUrl
 
-class WebPage(QWebPage):
-    def __init__(self, url):
-        self.__app = QApplication(sys.argv)
-        QWebPage.__init__(self)
-        self.loadFinished.connect(self._loadFinished)
-        self.mainFrame().load(QUrl(url))
-        self.__app.exec_()
-
-    def _loadFinished(self, result):
-        self.frame = self.mainFrame()
-        self.__app.quit()
 
 def getlang(td):
     """Returns the language attribute of a td tag."""
@@ -88,9 +74,7 @@ def get(search):
            "=ende&lang=de&directN=0&search=%s&resultOrder=basic&"\
            "multiwordShowSingle=on"
     url = mask % search.replace(" ", "+")
-    p = WebPage(url)
-    html = p.frame.toHtml().encode('ascii', 'ignore')
-    content = BeautifulSoup(html)
+    content = BeautifulSoup(urlopen(Request(url)).read())
     p = HTMLParser()
     result_en = content.findAll(
             "td", attrs={"data-dz-attr": "relink", "lang": "en"})
