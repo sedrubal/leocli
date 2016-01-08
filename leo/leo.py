@@ -112,7 +112,8 @@ def get(search, language='en'):
                     results.append((res0.repr.getText(),
                                     res1.repr.getText()))
             results.append(('---', '---'))
-    del results[-1]  # remove last separator
+    if len(results):
+        del results[-1]  # remove last separator
     return results
 
 
