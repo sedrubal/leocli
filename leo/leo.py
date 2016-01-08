@@ -1,5 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # - * - encoding: utf-8  - * -
+
+"""
+leo - a german<->english language translation script
+"""
+
+from __future__ import print_function
+
 """
 Copyright (c) 2012 Christian Schick
 
@@ -22,24 +29,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-"""
-================================================================================
-               leo - a german<->english language translation script
-================================================================================
-"""
-
-
-###############################################################################
-# AUTHORSHIP INFORMATION
-###############################################################################
-__author__ = "Christian Schick"
+__authors__ = "Christian Schick, Sedrubal"
 __copyright__ = "Copyright 2013, Christian Schick"
 __license__ = "MIT"
 __version__ = "1.4.1"
 __maintainer__ = "Christian Schick"
 __email__ = "github@simperium.de"
-
-###############################################################################
 
 from bs4 import BeautifulSoup
 import requests
@@ -63,7 +58,7 @@ def get(search):
     url = API.format(words=search.replace(" ", "+"))
     req = requests.get(url)
     if req.status_code is not 200:
-        print("The API seems to be down")
+        print("[!] The API seems to be down", file=sys.stderr)
         exit(1)
 
     content = BeautifulSoup(req.text, "xml")
@@ -97,7 +92,7 @@ def print_result(results):
 def main_entry():
     """the main function"""
     if len(sys.argv) < 2:
-        print("Missing keywords")
+        print("[!] Missing keywords", file=sys.stderr)
         sys.exit(255)
     search = "+".join(
         escape(x).encode('ascii', 'xmlcharrefreplace') for x in sys.argv[1:])
@@ -105,11 +100,9 @@ def main_entry():
     if len(res):
         print_result(res)
     else:
-        print("No matches found for '%s'" % search)
+        print("[!] No matches found for '%s'" % search, file=sys.stderr)
         exit(1)
 
-
-###############################################################################
 
 if __name__ == "__main__":
     sys.exit(main_entry())
