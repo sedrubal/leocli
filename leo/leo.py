@@ -50,7 +50,6 @@ except ImportError:
 API = "https://dict.leo.org/dictQuery/m-vocab/{lang}de/query.xml"
 DEFAULTPARAMS = {
     'tolerMode': 'nof',
-    'lp': 'enable',
     'rmWords': 'off',
     'rmSearch': 'on',
     'searchLoc': '0',
@@ -80,7 +79,8 @@ def parse_args():
                         default='en',
                         choices=['en', 'fr', 'es', 'it',
                                  'ch', 'ru', 'pt', 'pl'],
-                        help="the language to translate to or from")
+                        help="the languagecode to translate to or from "
+                             "(en, fr, es, it, ch, ru, pt, pl)")
 
     if 'autocomplete' in locals():
         autocomplete(parser)
@@ -94,10 +94,11 @@ def get(search, language='en'):
     """Queries the API and returns a lists of result string pairs"""
     params = {
         'search': '+'.join(search),
+        'lp': '{lang}de'.format(lang=language),
     }
     params.update(DEFAULTPARAMS)
     req = requests.get(API.format(lang=language), params=params)
-    if req.status_code is not 200:
+    if req.status_code != requests.codes.OK:
         print("[!] The API seems to be down", file=sys.stderr)
         exit(1)
 
