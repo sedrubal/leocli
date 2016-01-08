@@ -3,7 +3,7 @@
 # PYTHON_ARGCOMPLETE_OK
 
 """
-leo - a german<->english language translation script
+leo - a console translation script for https://dict.leo.org
 """
 
 from __future__ import print_function
@@ -47,7 +47,7 @@ try:
 except ImportError:
     pass
 
-API = "https://dict.leo.org/dictQuery/m-vocab/ende/query.xml"
+API = "https://dict.leo.org/dictQuery/m-vocab/{lang}de/query.xml"
 DEFAULTPARAMS = {
     'tolerMode': 'nof',
     'lp': 'enable',
@@ -90,13 +90,13 @@ def parse_args():
     return args
 
 
-def get(search):
+def get(search, language='en'):
     """Queries the API and returns a lists of result string pairs"""
     params = {
         'search': '+'.join(search),
     }
     params.update(DEFAULTPARAMS)
-    req = requests.get(API, params=params)
+    req = requests.get(API.format(lang=language), params=params)
     if req.status_code is not 200:
         print("[!] The API seems to be down", file=sys.stderr)
         exit(1)
