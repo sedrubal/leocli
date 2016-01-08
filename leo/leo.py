@@ -39,24 +39,28 @@ __email__ = "github@simperium.de"
 from bs4 import BeautifulSoup
 import requests
 import sys
-from cgi import escape
+import six
 
-API = "https://dict.leo.org/dictQuery/m-vocab/ende/query.xml" \
-      "?tolerMode=nof" \
-      "&lp=ende" \
-      "&lang=de" \
-      "&rmWords=off" \
-      "&rmSearch=on" \
-      "&search={words}" \
-      "&searchLoc=0" \
-      "&resultOrder=basic" \
-      "&multiwordShowSingle=on"
+API = "https://dict.leo.org/dictQuery/m-vocab/ende/query.xml"
+DEFAULTPARAMS = {
+    'tolerMode': 'nof',
+    'lp': 'enable',
+    'rmWords': 'off',
+    'rmSearch': 'on',
+    'searchLoc': '0',
+    'resultOrder': 'basic',
+    'multiwirdShowSingle': 'on',
+    'lang': 'de',
+}
 
 
 def get(search):
     """Queries the API and returns a lists of result string pairs"""
-    url = API.format(words=search.replace(" ", "+"))
-    req = requests.get(url)
+    params = {
+        'search': '+'.join(search),
+    }
+    params.update(DEFAULTPARAMS)
+    req = requests.get(API, params=params)
     if req.status_code is not 200:
         print("[!] The API seems to be down", file=sys.stderr)
         exit(1)
@@ -85,7 +89,7 @@ def print_result(results):
             print('-' * (widest[0] + widest[1] + 4))
         else:
             space = " " * (widest[0] - len(lang0))
-            print(unicode("{lang0}{space} -- {lang1}").format(
+            print(six.text_type("{lang0}{space} -- {lang1}").format(
                 lang0=lang0, space=space, lang1=lang1))
 
 
@@ -94,13 +98,12 @@ def main_entry():
     if len(sys.argv) < 2:
         print("[!] Missing keywords", file=sys.stderr)
         sys.exit(255)
-    search = "+".join(
-        escape(x).encode('ascii', 'xmlcharrefreplace') for x in sys.argv[1:])
-    res = get(search)
+    res = get(sys.argv[1:])
     if len(res):
         print_result(res)
     else:
-        print("[!] No matches found for '%s'" % search, file=sys.stderr)
+        print("[!] No matches found for '%s'" % "', '".join(sys.argv[1:]),
+              file=sys.stderr)
         exit(1)
 
 
