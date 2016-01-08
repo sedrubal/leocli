@@ -1,5 +1,8 @@
-leo - a console translation script for https://dict.leo.org
-===========================================================
+leo
+===
+
+a console translation script for https://dict.leo.org
+-----------------------------------------------------
 
 leo is a python script that queries `dict.leo.org` for one or more given keywords
 and prints their meanings and translations to stdout
@@ -26,10 +29,10 @@ from the directory you downloaded leo to.
 Usage
 -----
 
-After installing, run `leo` or if you don't want to install it, run `leo/leo.py.
+After installing, run `leo` or if you don't want to install it, run `leo/leo.py`.
 
 ```
-usage: leo.py [-h] [-l lang] word [word ...]
+usage: leo [-h] [-l lang] [--version] word [word ...]
 
 leo - a console translation script for https://dict.leo.org
 
@@ -40,6 +43,7 @@ optional arguments:
   -h, --help            show this help message and exit
   -l lang, --lang lang  the languagecode to translate to or from
                         (en, fr, es, it, ch, ru, pt, pl)
+  --version             show program's version number and exit
 ```
 
 License

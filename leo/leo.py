@@ -33,7 +33,7 @@ SOFTWARE.
 __authors__ = "Christian Schick, Sedrubal"
 __copyright__ = "Copyright 2013, Christian Schick"
 __license__ = "MIT"
-__version__ = "1.4.1"
+__version__ = "2.0"
 __maintainer__ = "Christian Schick"
 __email__ = "github@simperium.de"
 
@@ -81,6 +81,9 @@ def parse_args():
                                  'ch', 'ru', 'pt', 'pl'],
                         help="the languagecode to translate to or from "
                              "(en, fr, es, it, ch, ru, pt, pl)")
+    parser.add_argument('--version',
+                        action='version',
+                        version='%(prog)s {ver}'.format(ver=__version__))
 
     if 'autocomplete' in locals():
         autocomplete(parser)
