@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# - * - encoding: utf-8  - * -
 """
 Copyright (c) 2012 Christian Schick
 
@@ -40,88 +41,67 @@ __email__ = "github@simperium.de"
 
 ###############################################################################
 
-from BeautifulSoup import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 import requests
 import sys
 from cgi import escape
-from HTMLParser import HTMLParser
 
-API = "http://dict.leo.org/dictQuery/m-vocab/ende/de.html?searchLoc=0&lp"\
-      "=ende&lang=de&directN=0&search={words}&resultOrder=basic&"\
-      "multiwordShowSingle=on"
-
-
-def getlang(td):
-    """Returns the language attribute of a td tag."""
-    lang = None
-    for attr, value in td.attrs:
-        if attr == "lang":
-            lang = value
-            break
-    return lang
-
-
-def istag(obj):
-    """Tests if an object is an instance of BeautifulSoup.Tag."""
-    return isinstance(obj, Tag)
-
-
-def nospans(tag):
-    """Checks that the given tag contains no <span> subtags."""
-    spans = False
-    for subtag in tag.contents:
-        if istag(subtag):
-            spans = subtag.name == "span"
-        if spans:
-            break
-    return not spans
+API = "https://dict.leo.org/dictQuery/m-vocab/ende/query.xml" \
+      "?tolerMode=nof" \
+      "&lp=ende" \
+      "&lang=de" \
+      "&rmWords=off" \
+      "&rmSearch=on" \
+      "&search={words}" \
+      "&searchLoc=0" \
+      "&resultOrder=basic" \
+      "&multiwordShowSingle=on"
 
 
 def get(search):
+    """Queries the API and returns a lists of result string pairs"""
     url = API.format(words=search.replace(" ", "+"))
     req = requests.get(url)
     if req.status_code is not 200:
-        print("No matches found for '%s'" % search)
+        print("The API seems to be down")
         exit(1)
 
-    content = BeautifulSoup(req.text)
-    p = HTMLParser()
-    result_en = content.findAll(
-        "td", attrs={"data-dz-attr": "relink", "lang": "en"})
-    result_de = content.findAll(
-        "td", attrs={"data-dz-attr": "relink", "lang": "de"})
-    outlines = []
-    left = None
-    right = None
-    widest = 0
-    for i in range(0, len(result_en)):
-        if nospans(result_en[i]):
-            c = result_en[i].contents
-            left = "".join(p.unescape(x.text if istag(x) else x) for x in c)
-            c = result_de[i].contents
-            right = "".join(p.unescape(x.text if istag(x) else x) for x in c)
-            left = left.strip()
-            right = right.strip()
-            if len(left) > widest:
-                widest = len(left)
-            outlines.append((left, right))
-    if len(outlines) > 0:
-        widest = max(len(x[0]) for x in outlines)
-        print("\n".join(
-            x + (" " * (widest - len(x))) + " -- " + y for x, y in outlines))
-    else:
-        print("No matches found for '%s'" % search)
-        exit(1)
+    content = BeautifulSoup(req.text, "xml")
+    results = []
+    section = content.sectionlist.find('section')
+    if section and int(section['sctCount']) > 0:
+        for entry in section.findAll('entry'):
+            res0 = entry.find('side', attrs={'hc': '0'})
+            res1 = entry.find('side', attrs={'hc': '1'})
+            if res0 and res1:
+                results.append((res0.repr.getText(), res1.repr.getText()))
+    return results
 
+
+def print_result(results):
+    """Prints the result to stdout"""
+    widest = max(len(x[0]) for x in results)
+    for (lang0, lang1) in results:
+        space = " " * (widest - len(lang0))
+        print(unicode("{lang0}{space} -- {lang1}").format(
+            lang0=lang0, space=space, lang1=lang1))
 ###############################################################################
 
 
 def main_entry():
+    """the main function"""
     if len(sys.argv) < 2:
         print("Missing keywords")
         sys.exit(255)
-    get("+".join(
-        escape(x).encode('ascii', 'xmlcharrefreplace') for x in sys.argv[1:]))
+    search = "+".join(
+        escape(x).encode('ascii', 'xmlcharrefreplace') for x in sys.argv[1:])
+    res = get(search)
+    if len(res):
+        print_result(res)
+    else:
+        print("No matches found for '%s'" % search)
+        exit(1)
+
 
 ###############################################################################
 

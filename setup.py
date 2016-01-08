@@ -49,4 +49,4 @@ setup(
         long_description=read("README.md"),
         url="http://github.com/Hydrael/leo",
         version=leo.__version__,
-        install_requires=["BeautifulSoup"])
+        install_requires=["beautifulsoup4", "requests"])
