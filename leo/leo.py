@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-# - * - encoding: utf-8  - * -
+# -*- encoding: utf-8  -*-
+# PYTHON_ARGCOMPLETE_OK
 
 """
 leo - a german<->english language translation script
@@ -38,8 +39,13 @@ __email__ = "github@simperium.de"
 
 from bs4 import BeautifulSoup
 import requests
+import argparse
 import sys
 import six
+try:
+    import autocomplete
+except ImportError:
+    pass
 
 API = "https://dict.leo.org/dictQuery/m-vocab/ende/query.xml"
 DEFAULTPARAMS = {
@@ -52,6 +58,36 @@ DEFAULTPARAMS = {
     'multiwirdShowSingle': 'on',
     'lang': 'de',
 }
+
+
+def parse_args():
+    """
+    Parse arguments
+    :return: the parsed arguments
+    """
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('words',
+                        action='store',
+                        nargs='+',
+                        metavar='word',
+                        type=str,
+                        help="the words you want to translate")
+    parser.add_argument('-l', '--lang',
+                        action='store',
+                        dest='language',
+                        metavar='lang',
+                        type=str,
+                        default='en',
+                        choices=['en', 'fr', 'es', 'it',
+                                 'ch', 'ru', 'pt', 'pl'],
+                        help="the language to translate to or from")
+
+    if 'autocomplete' in locals():
+        autocomplete(parser)
+
+    args = parser.parse_args()
+
+    return args
 
 
 def get(search):
@@ -95,14 +131,12 @@ def print_result(results):
 
 def main_entry():
     """the main function"""
-    if len(sys.argv) < 2:
-        print("[!] Missing keywords", file=sys.stderr)
-        sys.exit(255)
-    res = get(sys.argv[1:])
+    args = parse_args()
+    res = get(args.words, args.language)
     if len(res):
         print_result(res)
     else:
-        print("[!] No matches found for '%s'" % "', '".join(sys.argv[1:]),
+        print("[!] No matches found for '%s'" % "', '".join(args.words),
               file=sys.stderr)
         exit(1)
 
