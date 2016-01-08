@@ -1,4 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+
+"""
+leo - a console translation script for https://dict.leo.org
+
+This setup script installs leo system-wide.
+"""
+
 """
 Copyright (c) 2012 Christian Schick
 
@@ -20,33 +27,26 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
-
-"""
-================================================================================
-               leo - a german<->english language translation script
-================================================================================
-
-This setup script installs leo system-wide.
-"""
-
 from setuptools import setup, find_packages
 import os
 from leo import leo
+
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(
-        name="leo",
-        packages=find_packages(),
-        entry_points = {
-            "console_scripts" : ["leo = leo.leo:main_entry"]
-            },
-        author=leo.__author__,
-        author_email=leo.__email__,
-        license=leo.__license__,
-        description="leo - a german<->english language translation script",
-        long_description=read("README.md"),
-        url="http://github.com/Hydrael/leo",
-        version=leo.__version__,
-        install_requires=["beautifulsoup4", "requests"])
+    name="leo",
+    packages=find_packages(),
+    entry_points={
+        "console_scripts": ["leo = leo.leo:main_entry"]
+    },
+    author=leo.__authors__,
+    author_email=leo.__email__,
+    license=leo.__license__,
+    description="leo - a german<->english language translation script",
+    long_description=read("README.md"),
+    url="http://github.com/Hydrael/leo",
+    version=leo.__version__,
+    install_requires=["beautifulsoup4", "requests", "argparse"]
+)
