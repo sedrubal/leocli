@@ -41,10 +41,14 @@ __email__ = "github@simperium.de"
 ###############################################################################
 
 from BeautifulSoup import BeautifulSoup, Tag
-from urllib2 import urlopen, Request
+import requests
 import sys
 from cgi import escape
 from HTMLParser import HTMLParser
+
+API = "http://dict.leo.org/dictQuery/m-vocab/ende/de.html?searchLoc=0&lp"\
+      "=ende&lang=de&directN=0&search={words}&resultOrder=basic&"\
+      "multiwordShowSingle=on"
 
 
 def getlang(td):
@@ -74,11 +78,13 @@ def nospans(tag):
 
 
 def get(search):
-    mask = "http://dict.leo.org/dictQuery/m-vocab/ende/de.html?searchLoc=0&lp"\
-           "=ende&lang=de&directN=0&search=%s&resultOrder=basic&"\
-           "multiwordShowSingle=on"
-    url = mask % search.replace(" ", "+")
-    content = BeautifulSoup(urlopen(Request(url)).read())
+    url = API.format(words=search.replace(" ", "+"))
+    req = requests.get(url)
+    if req.status_code is not 200:
+        print("No matches found for '%s'" % search)
+        exit(1)
+
+    content = BeautifulSoup(req.text)
     p = HTMLParser()
     result_en = content.findAll(
         "td", attrs={"data-dz-attr": "relink", "lang": "en"})
@@ -104,13 +110,15 @@ def get(search):
         print("\n".join(
             x + (" " * (widest - len(x))) + " -- " + y for x, y in outlines))
     else:
-        print "No matches found for '%s'" % search
+        print("No matches found for '%s'" % search)
+        exit(1)
 
-################################################################################
+###############################################################################
+
 
 def main_entry():
     if len(sys.argv) < 2:
-        print "Missing keywords"
+        print("Missing keywords")
         sys.exit(255)
     get("+".join(
         escape(x).encode('ascii', 'xmlcharrefreplace') for x in sys.argv[1:]))
