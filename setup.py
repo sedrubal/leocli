@@ -46,7 +46,7 @@ setup(
         author_email=leo.__email__,
         license=leo.__license__,
         description="leo - a german<->english language translation script",
-        long_description=read("README"),
+        long_description=read("README.md"),
         url="http://github.com/Hydrael/leo",
         version=leo.__version__,
         install_requires=["BeautifulSoup"])
