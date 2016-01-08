@@ -54,7 +54,7 @@ DEFAULTPARAMS = {
     'rmSearch': 'on',
     'searchLoc': '0',
     'resultOrder': 'basic',
-    'multiwirdShowSingle': 'on',
+    'multiwordShowSingle': 'on',
     'lang': 'de',
 }
 
