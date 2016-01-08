@@ -68,24 +68,30 @@ def get(search):
 
     content = BeautifulSoup(req.text, "xml")
     results = []
-    section = content.sectionlist.find('section')
-    if section and int(section['sctCount']) > 0:
-        for entry in section.findAll('entry'):
-            res0 = entry.find('side', attrs={'hc': '0'})
-            res1 = entry.find('side', attrs={'hc': '1'})
-            if res0 and res1:
-                results.append((res0.repr.getText(), res1.repr.getText()))
+    for section in content.sectionlist.findAll('section'):
+        if int(section['sctCount']) > 0:
+            for entry in section.findAll('entry'):
+                res0 = entry.find('side', attrs={'hc': '0'})
+                res1 = entry.find('side', attrs={'hc': '1'})
+                if res0 and res1:
+                    results.append((res0.repr.getText(),
+                                    res1.repr.getText()))
+            results.append(('---', '---'))
+    del results[-1]  # remove last separator
     return results
 
 
 def print_result(results):
     """Prints the result to stdout"""
-    widest = max(len(x[0]) for x in results)
+    widest = (max(len(x[0]) for x in results), max(len(x[1]) for x in results))
     for (lang0, lang1) in results:
-        space = " " * (widest - len(lang0))
-        print(unicode("{lang0}{space} -- {lang1}").format(
-            lang0=lang0, space=space, lang1=lang1))
-###############################################################################
+        if lang0 == lang1 == '---':
+            # separator
+            print('-' * (widest[0] + widest[1] + 4))
+        else:
+            space = " " * (widest[0] - len(lang0))
+            print(unicode("{lang0}{space} -- {lang1}").format(
+                lang0=lang0, space=space, lang1=lang1))
 
 
 def main_entry():
