@@ -44,7 +44,7 @@ setup(
     author=leo.__authors__,
     author_email=leo.__email__,
     license=leo.__license__,
-    description="leo - a german<->english language translation script",
+    description=leo.__doc__,
     long_description=read("README.md"),
     url="http://github.com/Hydrael/leo",
     version=leo.__version__,
