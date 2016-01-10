@@ -43,7 +43,7 @@ import argparse
 import sys
 import six
 try:
-    import autocomplete
+    import argcomplete
 except ImportError:
     pass
 
@@ -85,8 +85,8 @@ def parse_args():
                         action='version',
                         version='%(prog)s {ver}'.format(ver=__version__))
 
-    if 'autocomplete' in locals():
-        autocomplete(parser)
+    if 'argcomplete' in globals():
+        argcomplete.autocomplete(parser)
 
     args = parser.parse_args()
 
