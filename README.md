@@ -4,6 +4,9 @@ leo
 a console translation script for https://dict.leo.org
 -----------------------------------------------------
 
+[![Code Issues](https://www.quantifiedcode.com/api/v1/project/d4bd93aab3df4161a3174b634b2c8f1f/badge.svg)](https://www.quantifiedcode.com/app/project/d4bd93aab3df4161a3174b634b2c8f1f)
+[![Code Health](https://landscape.io/github/sedrubal/leo/master/landscape.svg?style=flat)](https://landscape.io/github/sedrubal/leo/master)
+
 leo is a python script that queries `dict.leo.org` for one or more given keywords
 and prints their meanings and translations to stdout
 

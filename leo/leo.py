@@ -146,7 +146,7 @@ def main_entry():
         print_result(res)
     else:
         print(
-            "[!] No matches found for '%s'" % "', '".join(args.words),
+            "[!] No matches found for '{}'".format("', '".join(args.words)),
             file=sys.stderr
         )
         exit(1)
