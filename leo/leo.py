@@ -1,13 +1,19 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8  -*-
 # PYTHON_ARGCOMPLETE_OK
-
-"""
-leo - a console translation script for https://dict.leo.org
-"""
+"""leo - a console translation script for https://dict.leo.org/ ."""
 
 from __future__ import print_function
 
+import argparse
+import sys
+from bs4 import BeautifulSoup
+import requests
+import six
+try:
+    import argcomplete
+except ImportError:
+    pass
 """
 Copyright (c) 2012 Christian Schick
 
@@ -37,16 +43,6 @@ __version__ = "2.0"
 __maintainer__ = "Christian Schick"
 __email__ = "github@simperium.de"
 
-from bs4 import BeautifulSoup
-import requests
-import argparse
-import sys
-import six
-try:
-    import argcomplete
-except ImportError:
-    pass
-
 API = "https://dict.leo.org/dictQuery/m-vocab/{lang}de/query.xml"
 DEFAULTPARAMS = {
     'tolerMode': 'nof',
@@ -61,29 +57,36 @@ DEFAULTPARAMS = {
 
 def parse_args():
     """
-    Parse arguments
-    :return: the parsed arguments
+    Parse cli arguments.
+
+    Return the parsed arguments
     """
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('words',
-                        action='store',
-                        nargs='+',
-                        metavar='word',
-                        type=str,
-                        help="the words you want to translate")
-    parser.add_argument('-l', '--lang',
-                        action='store',
-                        dest='language',
-                        metavar='lang',
-                        type=str,
-                        default='en',
-                        choices=['en', 'fr', 'es', 'it',
-                                 'ch', 'ru', 'pt', 'pl'],
-                        help="the languagecode to translate to or from "
-                             "(en, fr, es, it, ch, ru, pt, pl)")
-    parser.add_argument('--version',
-                        action='version',
-                        version='%(prog)s {ver}'.format(ver=__version__))
+    parser.add_argument(
+        'words',
+        action='store',
+        nargs='+',
+        metavar='word',
+        type=str,
+        help="the words you want to translate"
+    )
+    parser.add_argument(
+        '-l',
+        '--lang',
+        action='store',
+        dest='language',
+        metavar='lang',
+        type=str,
+        default='en',
+        choices=['en', 'fr', 'es', 'it', 'ch', 'ru', 'pt', 'pl'],
+        help="the languagecode to translate to or from "
+        "(en, fr, es, it, ch, ru, pt, pl)"
+    )
+    parser.add_argument(
+        '--version',
+        action='version',
+        version='%(prog)s {ver}'.format(ver=__version__)
+    )
 
     if 'argcomplete' in globals():
         argcomplete.autocomplete(parser)
@@ -94,7 +97,7 @@ def parse_args():
 
 
 def get(search, language='en'):
-    """Queries the API and returns a lists of result string pairs"""
+    """Querie the API and returns a lists of result string pairs."""
     params = {
         'search': '+'.join(search),
         'lp': '{lang}de'.format(lang=language),
@@ -113,8 +116,7 @@ def get(search, language='en'):
                 res0 = entry.find('side', attrs={'hc': '0'})
                 res1 = entry.find('side', attrs={'hc': '1'})
                 if res0 and res1:
-                    results.append((res0.repr.getText(),
-                                    res1.repr.getText()))
+                    results.append((res0.repr.getText(), res1.repr.getText()))
             results.append(('---', '---'))
     if len(results):
         del results[-1]  # remove last separator
@@ -122,7 +124,7 @@ def get(search, language='en'):
 
 
 def print_result(results):
-    """Prints the result to stdout"""
+    """Print the result to stdout."""
     widest = (max(len(x[0]) for x in results), max(len(x[1]) for x in results))
     for (lang0, lang1) in results:
         if lang0 == lang1 == '---':
@@ -130,19 +132,23 @@ def print_result(results):
             print('-' * (widest[0] + widest[1] + 4))
         else:
             space = " " * (widest[0] - len(lang0))
-            print(six.text_type("{lang0}{space} -- {lang1}").format(
-                lang0=lang0, space=space, lang1=lang1))
+            print(
+                six.text_type("{lang0}{space} -- {lang1}").format(
+                    lang0=lang0, space=space, lang1=lang1)
+            )
 
 
 def main_entry():
-    """the main function"""
+    """The main function."""
     args = parse_args()
     res = get(args.words, args.language)
     if len(res):
         print_result(res)
     else:
-        print("[!] No matches found for '%s'" % "', '".join(args.words),
-              file=sys.stderr)
+        print(
+            "[!] No matches found for '%s'" % "', '".join(args.words),
+            file=sys.stderr
+        )
         exit(1)
 
 
