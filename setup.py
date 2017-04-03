@@ -1,10 +1,16 @@
 #!/usr/bin/env python
 
 """
-leo - a console translation script for https://dict.leo.org
+leo - a console translation script for https://dict.leo.org/ .
 
-This setup script installs leo system-wide.
+This setup script installs leo.
 """
+
+import os
+
+from setuptools import find_packages, setup
+
+from leo import leo
 
 """
 Copyright (c) 2012 Christian Schick
@@ -27,13 +33,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
-from setuptools import setup, find_packages
-import os
-from leo import leo
-
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
+
+
+def get_requirements(filename="requirements.txt"):
+    """Returns a list of all requirements."""
+    text = read(filename)
+    requirements = []
+    for line in text.splitlines():
+        req = line.split('#')[0].strip()
+        if req != '':
+            requirements.append(req)
+    return requirements
 
 setup(
     name="leo",
@@ -48,5 +61,5 @@ setup(
     long_description=read("README.md"),
     url="http://github.com/Hydrael/leo",
     version=leo.__version__,
-    install_requires=["beautifulsoup4", "requests", "argparse", "argcomplete"]
+    install_requires=get_requirements(),
 )
