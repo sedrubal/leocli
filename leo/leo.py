@@ -1,15 +1,15 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8  -*-
-# PYTHON_ARGCOMPLETE_OK
 """leo - a console translation script for https://dict.leo.org/ ."""
 
 from __future__ import print_function
 
 import argparse
 import sys
-from bs4 import BeautifulSoup
+from typing import Iterable, List, Tuple
+
 import requests
-import six
+from bs4 import BeautifulSoup
+from tabulate import tabulate
+
 try:
     import argcomplete
 except ImportError:
@@ -36,14 +36,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-__authors__ = "Christian Schick, Sedrubal"
+__authors__ = "Sedrubal, Christian Schick, "
 __copyright__ = "Copyright 2013, Christian Schick"
 __license__ = "MIT"
 __version__ = "2.0"
-__maintainer__ = "Christian Schick"
-__email__ = "github@simperium.de"
+__maintainer__ = "Sedrubal"
+__email__ = "dev@sedrubal.de"
 
-API = "https://dict.leo.org/dictQuery/m-vocab/{lang}de/query.xml"
+API = "https://dict.leo.org/dictQuery/m-vocab/{lang1}{lang2}/query.xml"
 DEFAULTPARAMS = {
     'tolerMode': 'nof',
     'rmWords': 'off',
@@ -53,14 +53,27 @@ DEFAULTPARAMS = {
     'multiwordShowSingle': 'on',
     'lang': 'de',
 }
+LANGUAGES = {
+    'de': 'German',
+    'en': 'English',
+    'fr': 'French',
+    'es': 'Spanish',
+    'it': 'Italian',
+    'ch': '',
+    'ru': 'Russian',
+    'pt': '',
+    'pl': '',
+}
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """
     Parse cli arguments.
 
     Return the parsed arguments
     """
+    valid_langs = [lang for lang in LANGUAGES.keys() if lang != 'de']
+    valid_langs_str = ', '.join(valid_langs)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         'words',
@@ -68,7 +81,7 @@ def parse_args():
         nargs='+',
         metavar='word',
         type=str,
-        help="the words you want to translate"
+        help="the words you want to translate",
     )
     parser.add_argument(
         '-l',
@@ -78,9 +91,8 @@ def parse_args():
         metavar='lang',
         type=str,
         default='en',
-        choices=['en', 'fr', 'es', 'it', 'ch', 'ru', 'pt', 'pl'],
-        help="the languagecode to translate to or from "
-        "(en, fr, es, it, ch, ru, pt, pl)"
+        choices=valid_langs,
+        help=f"the languagecode to translate to or from {valid_langs_str}",
     )
     parser.add_argument(
         '--version',
@@ -96,61 +108,86 @@ def parse_args():
     return args
 
 
-def get(search, language='en'):
+def get(
+        search: Iterable[str],
+        language1: str = 'en',
+        language2: str = 'de',
+) -> str:
     """Querie the API and returns a lists of result string pairs."""
     params = {
         'search': '+'.join(search),
-        'lp': '{lang}de'.format(lang=language),
+        'lp': f'{language1}{language2}'
     }
     params.update(DEFAULTPARAMS)
-    req = requests.get(API.format(lang=language), params=params)
-    if req.status_code != requests.codes.OK:
-        print("[!] The API seems to be down", file=sys.stderr)
+    try:
+        res = requests.get(
+            API.format(
+                lang1=language1,
+                lang2=language2
+            ),
+            params=params,
+        )
+        res.raise_for_status()
+    except (
+            requests.exceptions.HTTPError,
+            requests.exceptions.ConnectionError
+    ) as err:
+        print('[!]', str(err), file=sys.stderr)
         exit(1)
 
-    content = BeautifulSoup(req.text, "xml")
+    return res.text
+
+
+def parse_api(
+        api_res: str,
+        language1: str = 'en',
+        language2: str = 'de',
+) -> List[List[Tuple[str, str]]]:
+    """Parse the API response and return the results list."""
+    content = BeautifulSoup(api_res, "xml")
     results = []
     for section in content.sectionlist.findAll('section'):
         if int(section['sctCount']) > 0:
+            result = []
             for entry in section.findAll('entry'):
-                res0 = entry.find('side', attrs={'hc': '0'})
-                res1 = entry.find('side', attrs={'hc': '1'})
+                res0 = entry.find('side', attrs={'lang': language1})
+                res1 = entry.find('side', attrs={'lang': language2})
                 if res0 and res1:
-                    results.append((res0.repr.getText(), res1.repr.getText()))
-            results.append(('---', '---'))
-    if len(results):
-        del results[-1]  # remove last separator
+                    res0_str: str = res0.repr.getText()
+                    res1_str: str = res1.repr.getText()
+                    result.append((res0_str, res1_str))
+            if result:
+                results.append(result)
     return results
 
 
-def print_result(results):
+def print_result(
+        results: List[List[Tuple[str, str]]],
+        language1: str = 'en',
+        language2: str = 'de',
+) -> None:
     """Print the result to stdout."""
-    widest = (max(len(x[0]) for x in results), max(len(x[1]) for x in results))
-    for (lang0, lang1) in results:
-        if lang0 == lang1 == '---':
-            # separator
-            print('-' * (widest[0] + widest[1] + 4))
-        else:
-            space = " " * (widest[0] - len(lang0))
-            print(
-                six.text_type("{lang0}{space} -- {lang1}").format(
-                    lang0=lang0, space=space, lang1=lang1)
-            )
+    print('\n\n'.join(
+        tabulate(
+            result,
+            headers=(LANGUAGES[language1], LANGUAGES[language2]),
+            tablefmt='presto',
+        ) for result in results
+    ))
 
 
-def main_entry():
+def main_entry() -> None:
     """The main function."""
     args = parse_args()
-    res = get(args.words, args.language)
-    if len(res):
-        print_result(res)
+    # The second language must be 'de'
+    language2 = 'de'
+    api_res = get(args.words, args.language, language2)
+    words = parse_api(api_res, args.language, language2)
+    if words:
+        print_result(words, args.language, language2)
     else:
         print(
             "[!] No matches found for '{}'".format("', '".join(args.words)),
             file=sys.stderr
         )
         exit(1)
-
-
-if __name__ == "__main__":
-    sys.exit(main_entry())

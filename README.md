@@ -1,38 +1,26 @@
-leo
-===
+# leo
 
 a console translation script for https://dict.leo.org
------------------------------------------------------
 
-[![Code Issues](https://www.quantifiedcode.com/api/v1/project/d4bd93aab3df4161a3174b634b2c8f1f/badge.svg)](https://www.quantifiedcode.com/app/project/d4bd93aab3df4161a3174b634b2c8f1f)
 [![Code Health](https://landscape.io/github/sedrubal/leo/master/landscape.svg?style=flat)](https://landscape.io/github/sedrubal/leo/master)
 
 leo is a python script that queries `dict.leo.org` for one or more given keywords
 and prints their meanings and translations to stdout
 
-Installation
-------------
+# Installation
 
-If you want to install leo system-wide, you should use setup.py:
-
-    python setup.py install
-
-This will invoke python's setuptools and install leo to the system's
-site-packages directory and create an executable script in `/usr/bin/leo`
-To choose other install locations refer to setuptool's help by invoking
-
-    python setup.py install --help
-
-If you do not wish to install leo system-wide you can simply call it by invoking
-
-    leo/leo.py
-
-from the directory you downloaded leo to.
+```sh
+pipenv sync
+```
 
 Usage
 -----
 
-After installing, run `leo` or if you don't want to install it, run `leo/leo.py`.
+TODO: This should be improved...
+
+```sh
+pipenv run python -m leo --help
+```
 
 ```
 usage: leo [-h] [-l lang] [--version] word [word ...]
