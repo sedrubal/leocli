@@ -1,5 +1,0 @@
-v1.3
-====
-
- - Fixed error when no matches are found
- - Fixed exception when result list was odd-numbered
