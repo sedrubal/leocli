@@ -1,31 +1,36 @@
-# leo
+# leocli
 
-a console translation script for https://dict.leo.org
+A console translation script for https://dict.leo.org
 
 [![Code Health](https://landscape.io/github/sedrubal/leo/master/landscape.svg?style=flat)](https://landscape.io/github/sedrubal/leo/master)
 
-leo is a python script that queries `dict.leo.org` for one or more given keywords
+`leocli` is a python script that queries `dict.leo.org` for one or more given keywords
 and prints their meanings and translations to stdout
 
 # Installation
 
 ```sh
-pipenv sync
+pip install --user leocli
+```
+
+## Development install
+
+```sh
+poetry install
 ```
 
 Usage
 -----
 
-TODO: This should be improved...
-
 ```sh
-pipenv run python -m leo --help
+poetry shell
+leo --help
 ```
 
 ```
 usage: leo [-h] [-l lang] [--version] word [word ...]
 
-leo - a console translation script for https://dict.leo.org
+leocli - a console translation script for https://dict.leo.org
 
 positional arguments:
   word                  the words you want to translate
