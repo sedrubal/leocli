@@ -1,37 +1,42 @@
 """
 leocli - a console translation script for https://dict.leo.org/ .
-
-Copyright (c) 2012 Christian Schick
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 """
+
+# Copyright (c) 2012 Christian Schick
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the "Software"), to deal in
+# the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+# of the Software, and to permit persons to whom the Software is furnished to do
+# so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import argparse
 import subprocess
 import sys
-from typing import Iterable, List, Tuple, Optional
+from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union
 
 import requests
+import termcolor
 from bs4 import BeautifulSoup
 from tabulate import tabulate
 
 from . import __version__
+
+if TYPE_CHECKING:
+    from bs4.element import Tag
+
 
 try:
     import argcomplete
@@ -49,17 +54,17 @@ DEFAULTPARAMS = {
     "lang": "de",
 }
 LANGUAGES = {
-    "de": "German",
-    "en": "English",
-    "fr": "French",
-    "es": "Spanish",
-    "it": "Italian",
-    "ch": "",
-    "ru": "Russian",
-    "pt": "",
-    "pl": "",
+    "de": {"name": "German", "emoji": "🇩🇪",},
+    "en": {"name": "English", "emoji": "🇺🇸",},
+    "fr": {"name": "French", "emoji": "🇫🇷",},
+    "es": {"name": "Spanish", "emoji": "🇪🇸",},
+    "it": {"name": "Italian", "emoji": "🇮🇹",},
+    "ch": {"name": "Chinese", "emoji": "🇨🇳",},
+    "ru": {"name": "Russian", "emoji": "🇷🇺",},
+    "pt": {"name": "Portuguese", "emoji": "🇵🇹",},
+    "pl": {"name": "Polish", "emoji": "🇵🇱",},
 }
-PAGER = "less"
+PAGER = "less -R -I -S -X"
 
 
 def parse_args() -> argparse.Namespace:
@@ -91,13 +96,21 @@ def parse_args() -> argparse.Namespace:
         help=f"the languagecode to translate to or from {valid_langs_str}",
     )
     parser.add_argument(
+        "-e",
+        "--emojis",
+        action="store_true",
+        dest="emojis",
+        default=False,
+        help="Use emoji language flags for languages. Your terminal font must support this feature.",
+    )
+    parser.add_argument(
         "--pager",
         action="store",
         dest="pager",
         metavar="pagercmd",
         type=str,
         default=PAGER,
-        help=f"The pager command to use. Default: {PAGER}. Use `--pager=` to disable the pager.",
+        help=f"The pager command to use. Default: '{PAGER}'. Use `--pager=` to disable the pager.",
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}",
@@ -125,46 +138,109 @@ def get(search: Iterable[str], language1: str = "en", language2: str = "de",) ->
     return res.text
 
 
+class Text(str):
+    """Represent a text node received from API."""
+
+
+class Attribute(str):
+    """Represent a <small> or <domain> attribute received from API."""
+
+
+APITag = Union[Text, Attribute]
+APIText = List[APITag]
+APITranslation = Tuple[APIText, APIText]
+APISection = List[APITranslation]
+
+
+def simplify_repr(root: "Tag") -> APIText:
+    """Simplify the XML representation of a ``repr`` tag in API."""
+    result: APIText = []
+
+    for node in root:
+        if node.name in ("domain", "small"):
+            result.append(Attribute(node.getText()))
+        else:
+            if node.name is None:
+                result.append(Text(node))
+            else:
+                result.append(Text(node.getText()))
+
+    return result
+
+
 def parse_api(
     api_res: str, language1: str = "en", language2: str = "de",
-) -> List[List[Tuple[str, str]]]:
+) -> List[APISection]:
     """Parse the API response and return the results list."""
     content = BeautifulSoup(api_res, "xml")
     results = []
 
-    for section in content.sectionlist.findAll("section"):
-        if int(section["sctCount"]) > 0:
-            result = []
+    for api_section in content.sectionlist.findAll("section"):
+        if int(api_section["sctCount"]) > 0:
+            section: APISection = []
 
-            for entry in section.findAll("entry"):
+            for entry in api_section.findAll("entry"):
                 res0 = entry.find("side", attrs={"lang": language1})
                 res1 = entry.find("side", attrs={"lang": language2})
 
                 if res0 and res1:
-                    res0_str: str = res0.repr.getText()
-                    res1_str: str = res1.repr.getText()
-                    result.append((res0_str, res1_str))
+                    res0_text = simplify_repr(res0.repr)
+                    res1_text = simplify_repr(res1.repr)
+                    section.append((res0_text, res1_text))
 
-            if result:
-                results.append(result)
+            if section:
+                results.append(section)
 
     return results
 
 
 def print_result(
-    results: List[List[Tuple[str, str]]],
+    results: List[APISection],
     language1: str = "en",
     language2: str = "de",
     pager: Optional[str] = PAGER,
+    with_emojis: bool = False,
 ) -> None:
     """Print the result to stdout."""
+
+    def format_api_text(text: APIText, normal_is_bold: bool = False) -> str:
+        return "".join(
+            termcolor.colored(part, color="green")
+            if isinstance(part, Attribute)
+            else termcolor.colored(part, attrs=["bold"] if normal_is_bold else [])
+            for part in text
+        )
+
+    def format_translation(translation: APITranslation) -> Tuple[str, str]:
+        return (
+            format_api_text(translation[0], True),
+            format_api_text(translation[1], False),
+        )
+
+    def format_section(section: APISection) -> List[Tuple[str, str]]:
+        return [format_translation(translation) for translation in section]
+
+    def format_header(lang: str, with_emoji: bool = False) -> str:
+        lang_name = LANGUAGES[language1]["name"]
+        lang_emoji = LANGUAGES[language1]["emoji"]
+        header_str = lang_name
+
+        if with_emoji:
+            header_str += " " + lang_emoji
+
+        return termcolor.colored(header_str, attrs=["bold"])
+
     output = "\n\n".join(
         tabulate(
-            result,
-            headers=(LANGUAGES[language1], LANGUAGES[language2]),
-            tablefmt="presto",
+            format_section(section),
+            headers=(
+                format_header(language1, with_emoji=with_emojis),
+                format_header(language2, with_emoji=with_emojis),
+            ),
+            #  tablefmt="presto",
+            tablefmt="fancy_grid",
         )
-        for result in results
+        for section in results
     )
 
     if not pager:
@@ -184,7 +260,9 @@ def main() -> None:
     words = parse_api(api_res, args.language, language2)
 
     if words:
-        print_result(words, args.language, language2, pager=args.pager)
+        print_result(
+            words, args.language, language2, pager=args.pager, with_emojis=args.emojis
+        )
     else:
         print(
             "[!] No matches found for '{}'".format("', '".join(args.words)),

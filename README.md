@@ -28,17 +28,21 @@ leo --help
 ```
 
 ```
-usage: leo [-h] [-l lang] [--version] word [word ...]
+usage: leo [-h] [-l lang] [-e] [--pager pagercmd] [--version] word [word ...]
 
-leocli - a console translation script for https://dict.leo.org
+leocli - a console translation script for https://dict.leo.org/ .
 
 positional arguments:
   word                  the words you want to translate
 
 optional arguments:
   -h, --help            show this help message and exit
-  -l lang, --lang lang  the languagecode to translate to or from
-                        (en, fr, es, it, ch, ru, pt, pl)
+  -l lang, --lang lang  the languagecode to translate to or from en, fr, es,
+                        it, ch, ru, pt, pl
+  -e, --emojis          Use emoji language flags for languages. Your terminal
+                        font must support this feature.
+  --pager pagercmd      The pager command to use. Default: 'less -R -I -S -X'.
+                        Use `--pager=` to disable the pager.
   --version             show program's version number and exit
 ```
 
