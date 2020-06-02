@@ -23,8 +23,9 @@ SOFTWARE.
 """
 
 import argparse
+import subprocess
 import sys
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Tuple, Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -58,6 +59,7 @@ LANGUAGES = {
     "pt": "",
     "pl": "",
 }
+PAGER = "less"
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,6 +89,15 @@ def parse_args() -> argparse.Namespace:
         default="en",
         choices=valid_langs,
         help=f"the languagecode to translate to or from {valid_langs_str}",
+    )
+    parser.add_argument(
+        "--pager",
+        action="store",
+        dest="pager",
+        metavar="pagercmd",
+        type=str,
+        default=PAGER,
+        help=f"The pager command to use. Default: {PAGER}. Use `--pager=` to disable the pager.",
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}",
@@ -141,19 +152,27 @@ def parse_api(
 
 
 def print_result(
-    results: List[List[Tuple[str, str]]], language1: str = "en", language2: str = "de",
+    results: List[List[Tuple[str, str]]],
+    language1: str = "en",
+    language2: str = "de",
+    pager: Optional[str] = PAGER,
 ) -> None:
     """Print the result to stdout."""
-    print(
-        "\n\n".join(
-            tabulate(
-                result,
-                headers=(LANGUAGES[language1], LANGUAGES[language2]),
-                tablefmt="presto",
-            )
-            for result in results
+    output = "\n\n".join(
+        tabulate(
+            result,
+            headers=(LANGUAGES[language1], LANGUAGES[language2]),
+            tablefmt="presto",
         )
+        for result in results
     )
+
+    if not pager:
+        print(output)
+    else:
+        subprocess.run(
+            pager.split(), input=output, check=True, encoding=sys.stdout.encoding,
+        )
 
 
 def main() -> None:
@@ -165,7 +184,7 @@ def main() -> None:
     words = parse_api(api_res, args.language, language2)
 
     if words:
-        print_result(words, args.language, language2)
+        print_result(words, args.language, language2, pager=args.pager)
     else:
         print(
             "[!] No matches found for '{}'".format("', '".join(args.words)),
