@@ -221,8 +221,8 @@ def print_result(
         return [format_translation(translation) for translation in section]
 
     def format_header(lang: str, with_emoji: bool = False) -> str:
-        lang_name = LANGUAGES[language1]["name"]
-        lang_emoji = LANGUAGES[language1]["emoji"]
+        lang_name = LANGUAGES[lang]["name"]
+        lang_emoji = LANGUAGES[lang]["emoji"]
         header_str = lang_name
 
         if with_emoji:
