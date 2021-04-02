@@ -54,15 +54,15 @@ DEFAULTPARAMS = {
     "lang": "de",
 }
 LANGUAGES = {
-    "de": {"name": "German", "emoji": "🇩🇪",},
-    "en": {"name": "English", "emoji": "🇺🇸",},
-    "fr": {"name": "French", "emoji": "🇫🇷",},
-    "es": {"name": "Spanish", "emoji": "🇪🇸",},
-    "it": {"name": "Italian", "emoji": "🇮🇹",},
-    "ch": {"name": "Chinese", "emoji": "🇨🇳",},
-    "ru": {"name": "Russian", "emoji": "🇷🇺",},
-    "pt": {"name": "Portuguese", "emoji": "🇵🇹",},
-    "pl": {"name": "Polish", "emoji": "🇵🇱",},
+    "de": {"name": "German", "emoji": "🇩🇪"},
+    "en": {"name": "English", "emoji": "🇺🇸"},
+    "fr": {"name": "French", "emoji": "🇫🇷"},
+    "es": {"name": "Spanish", "emoji": "🇪🇸"},
+    "it": {"name": "Italian", "emoji": "🇮🇹"},
+    "ch": {"name": "Chinese", "emoji": "🇨🇳"},
+    "ru": {"name": "Russian", "emoji": "🇷🇺"},
+    "pt": {"name": "Portuguese", "emoji": "🇵🇹"},
+    "pl": {"name": "Polish", "emoji": "🇵🇱"},
 }
 PAGER = "less -R -I -S -X"
 
@@ -101,7 +101,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         dest="emojis",
         default=False,
-        help="Use emoji language flags for languages. Your terminal font must support this feature.",
+        help=(
+            "Use emoji language flags for languages. Your terminal font must support this feature."
+        ),
     )
     parser.add_argument(
         "--pager",
@@ -113,7 +115,9 @@ def parse_args() -> argparse.Namespace:
         help=f"The pager command to use. Default: '{PAGER}'. Use `--pager=` to disable the pager.",
     )
     parser.add_argument(
-        "--version", action="version", version=f"%(prog)s {__version__}",
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
 
     if "argcomplete" in globals():
@@ -124,15 +128,22 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def get(search: Iterable[str], language1: str = "en", language2: str = "de",) -> str:
+def get(
+    search: Iterable[str],
+    language1: str = "en",
+    language2: str = "de",
+) -> str:
     """Querie the API and returns a lists of result string pairs."""
     params = {"search": "+".join(search), "lp": f"{language1}{language2}"}
     params.update(DEFAULTPARAMS)
     try:
-        res = requests.get(API.format(lang1=language1, lang2=language2), params=params,)
+        res = requests.get(
+            API.format(lang1=language1, lang2=language2),
+            params=params,
+        )
         res.raise_for_status()
     except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as err:
-        print("[!]", str(err), file=sys.stderr)
+        termcolor.cprint(f"[!] {err}", color="red", file=sys.stderr)
         sys.exit(1)
 
     return res.text
@@ -169,7 +180,9 @@ def simplify_repr(root: "Tag") -> APIText:
 
 
 def parse_api(
-    api_res: str, language1: str = "en", language2: str = "de",
+    api_res: str,
+    language1: str = "en",
+    language2: str = "de",
 ) -> List[APISection]:
     """Parse the API response and return the results list."""
     content = BeautifulSoup(api_res, "xml")
@@ -247,7 +260,10 @@ def print_result(
         print(output)
     else:
         subprocess.run(
-            pager.split(), input=output, check=True, encoding=sys.stdout.encoding,
+            pager.split(),
+            input=output,
+            check=True,
+            encoding=sys.stdout.encoding,
         )
 
 
@@ -264,8 +280,12 @@ def main() -> None:
             words, args.language, language2, pager=args.pager, with_emojis=args.emojis
         )
     else:
+        words_str = ", ".join(f'"{word}"' for word in args.words)
         print(
-            "[!] No matches found for '{}'".format("', '".join(args.words)),
+            termcolor.colored(
+                f"No matches found for {words_str}.",
+                color="red",
+            ),
             file=sys.stderr,
         )
         sys.exit(1)
