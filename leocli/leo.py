@@ -3,6 +3,7 @@ leocli - a console translation script for https://dict.leo.org/ .
 """
 
 # Copyright (c) 2012 Christian Schick
+# Copyright (c) 2022 Sebastian Endres
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
@@ -25,7 +26,8 @@ leocli - a console translation script for https://dict.leo.org/ .
 import argparse
 import subprocess
 import sys
-from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union
+from pathlib import Path
+from typing import TYPE_CHECKING, Iterable, Optional
 
 import requests
 import termcolor
@@ -33,6 +35,18 @@ from bs4 import BeautifulSoup
 from tabulate import tabulate
 
 from . import __version__
+from .cache import Cache, CacheMiss
+from .conf import LeoConfig
+from .consts import (
+    API,
+    DEFAULTPARAMS,
+    LANGUAGES,
+    APISection,
+    APIText,
+    APITranslation,
+    Attribute,
+    Text,
+)
 
 if TYPE_CHECKING:
     from bs4.element import Tag
@@ -43,31 +57,8 @@ try:
 except ImportError:
     pass
 
-API = "https://dict.leo.org/dictQuery/m-vocab/{lang1}{lang2}/query.xml"
-DEFAULTPARAMS = {
-    "tolerMode": "nof",
-    "rmWords": "off",
-    "rmSearch": "on",
-    "searchLoc": "0",
-    "resultOrder": "basic",
-    "multiwordShowSingle": "on",
-    "lang": "de",
-}
-LANGUAGES = {
-    "de": {"name": "German", "emoji": "🇩🇪"},
-    "en": {"name": "English", "emoji": "🇺🇸"},
-    "fr": {"name": "French", "emoji": "🇫🇷"},
-    "es": {"name": "Spanish", "emoji": "🇪🇸"},
-    "it": {"name": "Italian", "emoji": "🇮🇹"},
-    "ch": {"name": "Chinese", "emoji": "🇨🇳"},
-    "ru": {"name": "Russian", "emoji": "🇷🇺"},
-    "pt": {"name": "Portuguese", "emoji": "🇵🇹"},
-    "pl": {"name": "Polish", "emoji": "🇵🇱"},
-}
-PAGER = "less -R -I -S -X"
 
-
-def parse_args() -> argparse.Namespace:
+def parse_args(conf: LeoConfig) -> argparse.Namespace:
     """
     Parse cli arguments.
 
@@ -75,6 +66,10 @@ def parse_args() -> argparse.Namespace:
     """
     valid_langs = [lang for lang in LANGUAGES.keys() if lang != "de"]
     valid_langs_str = ", ".join(valid_langs)
+
+    def parse_bool(value: str) -> bool:
+        return value.lower() in {"y", "yes", "t", "true", "1"}
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "words",
@@ -88,21 +83,21 @@ def parse_args() -> argparse.Namespace:
         "-l",
         "--lang",
         action="store",
-        dest="language",
+        dest="lang",
         metavar="lang",
         type=str,
-        default="en",
         choices=valid_langs,
-        help=f"the languagecode to translate to or from {valid_langs_str}",
+        help=f"The languagecode to translate to or from. Default: {conf.lang}. Choices: {valid_langs_str}",
     )
     parser.add_argument(
         "-e",
         "--emojis",
-        action="store_true",
-        dest="emojis",
-        default=False,
+        action="store",
+        dest="use_emojis",
+        metavar="y/n",
+        type=parse_bool,
         help=(
-            "Use emoji language flags for languages. Your terminal font must support this feature."
+            "Use emoji language flags for languages. Your terminal font must support this feature. Default: {conf.use_emojis}"
         ),
     )
     parser.add_argument(
@@ -111,8 +106,23 @@ def parse_args() -> argparse.Namespace:
         dest="pager",
         metavar="pagercmd",
         type=str,
-        default=PAGER,
-        help=f"The pager command to use. Default: '{PAGER}'. Use `--pager=` to disable the pager.",
+        help=f"The pager command to use. Default: '{conf.pager or 'None'}'. Use `--pager=` to disable the pager.",
+    )
+    parser.add_argument(
+        "--use-cache",
+        action="store",
+        dest="use_cache",
+        metavar="y/n",
+        type=parse_bool,
+        help=f"Cache results. Default: '{conf.use_cache}'",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        action="store",
+        dest="cache_dir",
+        metavar="cache_dir",
+        type=Path,
+        help=f"Cache directory. Default: '{conf.cache_dir}'",
     )
     parser.add_argument(
         "--version",
@@ -125,20 +135,22 @@ def parse_args() -> argparse.Namespace:
 
     args = parser.parse_args()
 
+    conf.update_from_args(args)
+
     return args
 
 
 def get(
     search: Iterable[str],
-    language1: str = "en",
-    language2: str = "de",
+    lang1: str = "en",
+    lang2: str = "de",
 ) -> str:
     """Querie the API and returns a lists of result string pairs."""
-    params = {"search": "+".join(search), "lp": f"{language1}{language2}"}
+    params = {"search": "+".join(search), "lp": f"{lang1}{lang2}"}
     params.update(DEFAULTPARAMS)
     try:
         res = requests.get(
-            API.format(lang1=language1, lang2=language2),
+            API.format(lang1=lang1, lang2=lang2),
             params=params,
         )
         res.raise_for_status()
@@ -149,41 +161,36 @@ def get(
     return res.text
 
 
-class Text(str):
-    """Represent a text node received from API."""
-
-
-class Attribute(str):
-    """Represent a <small> or <domain> attribute received from API."""
-
-
-APITag = Union[Text, Attribute]
-APIText = List[APITag]
-APITranslation = Tuple[APIText, APIText]
-APISection = List[APITranslation]
-
-
 def simplify_repr(root: "Tag") -> APIText:
     """Simplify the XML representation of a ``repr`` tag in API."""
     result: APIText = []
 
     for node in root:
         if node.name in ("domain", "small"):
-            result.append(Attribute(node.getText()))
+            text = node.getText()
+            if result and isinstance(result[-1], Attribute):
+                result[-1] = Attribute(result[-1] + text)
+            else:
+                result.append(Attribute(text))
         else:
             if node.name is None:
-                result.append(Text(node))
+                text = str(node)
             else:
-                result.append(Text(node.getText()))
+                text = node.getText()
+
+            if result and isinstance(result[-1], Text):
+                result[-1] = Text(result[-1] + text)
+            else:
+                result.append(Text(text))
 
     return result
 
 
 def parse_api(
     api_res: str,
-    language1: str = "en",
-    language2: str = "de",
-) -> List[APISection]:
+    lang1: str = "en",
+    lang2: str = "de",
+) -> list[APISection]:
     """Parse the API response and return the results list."""
     content = BeautifulSoup(api_res, "xml")
     results = []
@@ -193,8 +200,8 @@ def parse_api(
             section: APISection = []
 
             for entry in api_section.findAll("entry"):
-                res0 = entry.find("side", attrs={"lang": language1})
-                res1 = entry.find("side", attrs={"lang": language2})
+                res0 = entry.find("side", attrs={"lang": lang1})
+                res1 = entry.find("side", attrs={"lang": lang2})
 
                 if res0 and res1:
                     res0_text = simplify_repr(res0.repr)
@@ -208,11 +215,11 @@ def parse_api(
 
 
 def print_result(
-    results: List[APISection],
-    language1: str = "en",
-    language2: str = "de",
-    pager: Optional[str] = PAGER,
-    with_emojis: bool = False,
+    results: list[APISection],
+    lang1: str,
+    lang2: str,
+    pager: Optional[str],
+    with_emojis: bool,
 ) -> None:
     """Print the result to stdout."""
 
@@ -224,13 +231,13 @@ def print_result(
             for part in text
         )
 
-    def format_translation(translation: APITranslation) -> Tuple[str, str]:
+    def format_translation(translation: APITranslation) -> tuple[str, str]:
         return (
             format_api_text(translation[0], True),
             format_api_text(translation[1], False),
         )
 
-    def format_section(section: APISection) -> List[Tuple[str, str]]:
+    def format_section(section: APISection) -> list[tuple[str, str]]:
         return [format_translation(translation) for translation in section]
 
     def format_header(lang: str, with_emoji: bool = False) -> str:
@@ -247,8 +254,8 @@ def print_result(
         tabulate(
             format_section(section),
             headers=(
-                format_header(language1, with_emoji=with_emojis),
-                format_header(language2, with_emoji=with_emojis),
+                format_header(lang1, with_emoji=with_emojis),
+                format_header(lang2, with_emoji=with_emojis),
             ),
             #  tablefmt="presto",
             tablefmt="fancy_grid",
@@ -267,17 +274,50 @@ def print_result(
         )
 
 
+def lookup(
+    search: Iterable[str],
+    lang1: str,
+    lang2: str,
+    cache: Cache,
+) -> list[APISection]:
+    """Lookup a word, cache results."""
+    try:
+        words = cache.lookup(search=search, lang1=lang1, lang2=lang2)
+        termcolor.cprint("Using result from cache", color="green", file=sys.stderr)
+
+        return words
+    except CacheMiss:
+        pass
+
+    api_res = get(search, lang1, lang2)
+    words = parse_api(api_res, lang1, lang2)
+
+    cache.store(search=search, lang1=lang1, lang2=lang2, data=words)
+
+    return words
+
+
 def main() -> None:
     """The main function."""
-    args = parse_args()
+    conf = LeoConfig()
+    args = parse_args(conf)
+    cache = Cache(cache_dir=conf.cache_dir)
     # The second language must be 'de'
-    language2 = "de"
-    api_res = get(args.words, args.language, language2)
-    words = parse_api(api_res, args.language, language2)
+    lang2 = "de"
+    words = lookup(
+        search=args.words,
+        lang1=conf.lang,
+        lang2=lang2,
+        cache=cache,
+    )
 
     if words:
         print_result(
-            words, args.language, language2, pager=args.pager, with_emojis=args.emojis
+            words,
+            conf.lang,
+            lang2,
+            pager=conf.pager,
+            with_emojis=conf.use_emojis,
         )
     else:
         words_str = ", ".join(f'"{word}"' for word in args.words)
