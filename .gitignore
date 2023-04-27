@@ -7,3 +7,4 @@ leo.egg-info
 # virtual env
 *env*
 *.egg-info/
+.pyre/

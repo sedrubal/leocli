@@ -68,6 +68,8 @@ class Cache:
         cache_path = self._get_cache_path(search=search, lang1=lang1, lang2=lang2)
         cache_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # TODO max cache size & cleanup
+
         cache_entry = {
             "last_used": int(datetime.now().timestamp()),
             "num_used": 1,

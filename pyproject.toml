@@ -1,8 +1,9 @@
 [tool.poetry]
 name = "leocli"
-version = "3.4.1"
+version = "3.4.2"
 description = "A console translation script for https://dict.leo.org"
 authors = ["sedrubal <dev@sedrubal.de>"]
+repository = "https://github.com/sedrubal/leocli.git"
 license = "MIT"
 
 [tool.poetry.dependencies]
