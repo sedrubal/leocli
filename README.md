@@ -10,7 +10,7 @@ and prints their meanings and translations to stdout
 # Installation
 
 ```sh
-pip install --user leocli
+pipx install leocli
 ```
 
 ## Development install
